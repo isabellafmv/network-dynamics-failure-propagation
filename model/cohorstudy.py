@@ -168,8 +168,8 @@ for u, v, etype in edges:
 plt.figure(figsize=(8, 6))
 pos = nx.circular_layout(G_pc)
 
-nx.draw_networkx_nodes(G_pc, pos, node_color='lightgreen', node_size=2500)
-nx.draw_networkx_labels(G_pc, pos, font_weight='bold', font_size=10)
+nx.draw_networkx_nodes(G_pc, pos, node_color='#2F687D', node_size=2500)
+nx.draw_networkx_labels(G_pc, pos, font_weight='bold', font_size=10, font_color='#FDFCF4')
 
 solid_edges = [(u, v) for u, v, d in G_pc.edges(data=True) if d.get('style') == 'solid']
 dashed_edges = [(u, v) for u, v, d in G_pc.edges(data=True) if d.get('style') == 'dashed']
