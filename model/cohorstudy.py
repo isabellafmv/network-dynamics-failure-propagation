@@ -7,17 +7,15 @@ import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
-# Layer 3 Library: Vector Autoregression
-from statsmodels.tsa.api import VAR
-
 # Layer 2 Library: PC Algorithm (pip install causal-learn)
 from causallearn.search.ConstraintBased.PC import pc
 from causallearn.utils.GraphUtils import GraphUtils
 
+# Layer 3 Library: Vector Autoregression
+from statsmodels.tsa.api import VAR
 
-# ============================================================
+
 # STAGE 0: LOAD REAL DATA & RESHAPE TO LONG FORMAT
-# ============================================================
 
 # Adjust path if needed
 df_raw = pd.read_excel("/Users/isabellamueller-vogt/Library/Mobile Documents/com~apple~CloudDocs/08 - side quests/network-dynamics-failure-propagation/model/data/cohort_study_5000.xlsx")
