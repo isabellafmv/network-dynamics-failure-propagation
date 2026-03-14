@@ -139,94 +139,22 @@ plt.show()
 
 print("Stage 2 Complete: Causal Topology Discovered.")
 
+# new step 3 (sindy)
+from sindy import DataAdapter, build_causal_mask, fit_sindy_with_mask, \
+                  plot_sindy_results, validate_sindy_fit, extract_equations
 
-# STEP 3: LAYER 3 - TEMPORAL DYNAMICS (VAR Model)
-# Goal: Quantify the *strength* and *timing* of the edges found in Layer 2.
-model = VAR(df_train)
+# Wrap your training data (daily time steps = dt=1.0)
+adapter = DataAdapter(df_train, dt=1.0)
 
-# We use Lag 2 here (looking back 2 days)
-results = model.fit(maxlags=2) 
+# Build causal mask from the PC adjacency matrix you already have
+mask = build_causal_mask(adj_matrix, list(labels), poly_degree=1)
 
-print("\nStage 3 Complete: Model Trained.")
-print("   Checking Logic: Does 'Activity' lower 'Glucose'?")
+# Fit the ODE system (replaces VAR)
+sindy_model = fit_sindy_with_mask(adapter.X, adapter.t, mask, list(labels))
 
-# Row = The Cause (Activity yesterday -> L1.Activity)
-# Column = The Effect (Glucose today)
-coef = results.params.loc['L1.Activity', 'Glucose']
+# Stage 4-equivalent: dual heatmap (coefficients + sparsity pattern)
+plot_sindy_results(sindy_model, list(labels))
 
-print(f"   Coefficient (Activity -> Glucose): {coef:.5f} ({'Correct (Negative)' if coef < 0 else 'Incorrect'})")
+# Stage 6-equivalent: integrate ODEs and report RMSE per variable
+validate_sindy_fit(sindy_model, adapter.X, adapter.t, list(labels))
 
-# STAGE 4: VISUALIZE THE NETWORK
-
-# Extract Lag-1 Causal Matrix (How Yesterday affects Today)
-matrix_l1 = results.params.iloc[1:8, :] # Skip intercept row
-
-plt.figure(figsize=(10, 8))
-sns.heatmap(matrix_l1, annot=True, fmt=".2f", cmap='RdBu_r', center=0)
-plt.title("The 'Health Logic' Map\n(How Rows affect Columns next day)")
-plt.ylabel("Cause (Yesterday)")
-plt.xlabel("Effect (Today)")
-plt.show()
-
-print("Stage 4 Complete: Heatmap generated.")
-
-# STAGE 5: INTERVENTION SIMULATION
-print("\nStage 5: Running Simulations...")
-
-# Scenario 1: "If I force myself to Sleep better, what happens to my Glucose?"
-irf = results.irf(15) # 15 days projection
-
-plt.figure(figsize=(10, 5))
-irf.plot(impulse='Sleep', response='Glucose')
-plt.title("Intervention: Effect of Improving Sleep on Fasting Glucose")
-plt.grid(True, alpha=0.3)
-plt.show()
-
-# Scenario 2: "If I improve my VO2 Max (get fitter), does my RHR go down?"
-plt.figure(figsize=(10, 5))
-irf.plot(impulse='VO2_Max', response='RHR')
-plt.title("Intervention: Effect of Improving VO2 Max on Resting Heart Rate")
-plt.grid(True, alpha=0.3)
-plt.show()
-
-
-# STAGE 6: VALIDATION ON UNSEEN DATA
-print("\nRunning Stage 6: Validation...")
-
-# 1. Prepare Test Data
-# We extract the raw numpy array to avoid the Index Warning you saw earlier.
-test_values = df_test.values
-lag_order = results.k_ar
-
-predictions = []
-actuals = []
-
-# 2. Walk-Forward Validation
-# For every day in the test set, use the previous 2 days (Lag 2) to predict today.
-for i in range(lag_order, len(test_values)):
-    # Input: The previous 'lag_order' days from the test set
-    forecast_input = test_values[i-lag_order:i] 
-    
-    # Predict: The next single step
-    pred = results.forecast(y=forecast_input, steps=1)
-    
-    predictions.append(pred[0])
-    actuals.append(test_values[i])
-
-# 3. Organize Results into DataFrames
-pred_df = pd.DataFrame(predictions, columns=df_test.columns)
-act_df = pd.DataFrame(actuals, columns=df_test.columns)
-
-# 4. Visualize Accuracy (Focus on 'Activity')
-plt.figure(figsize=(12, 5))
-limit = 100 # Zoom in on the first 100 days for clarity
-plt.plot(act_df['Activity'][:limit].values, label='Actual Data (Asia)', color='black', alpha=0.5)
-plt.plot(pred_df['Activity'][:limit].values, label='Model Prediction', color='red', linestyle='--')
-plt.title(f"Validation: Predicting Activity on Unseen Continent (Asia)")
-plt.legend()
-plt.grid(True, alpha=0.3)
-plt.show()
-
-# 5. Score the Model
-rmse = np.sqrt(mean_squared_error(act_df['Activity'], pred_df['Activity']))
-print(f"Validation Complete. RMSE on Unseen Data: {rmse:.2f}")
